@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# LangGraph durable checkpoints (local runtime state -- not source)
+checkpoints.sqlite
+checkpoints.sqlite-*
+
+# Secrets / local env
+.env
+*.env
+
+# OS
+.DS_Store
