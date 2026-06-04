@@ -52,6 +52,7 @@ Powered by z.ai (GLM) through the OpenAI-compatible API.
 import operator
 import os
 import sqlite3
+import sys
 import uuid
 from typing import Annotated, TypedDict
 
@@ -67,12 +68,23 @@ from langgraph.types import interrupt, Command
 # ---------------------------------------------------------------------------
 # 1. The LLM
 # ---------------------------------------------------------------------------
+def require_env(name: str) -> str:
+    """Read a required env var, exiting with a friendly hint if it's missing."""
+    try:
+        return os.environ[name]
+    except KeyError:
+        raise SystemExit(
+            f"❌ {name} is not set. Export it first (see .env.example):\n"
+            f'   export {name}="your-key-here"'
+        )
+
+
 # z.ai exposes an OpenAI-compatible endpoint, so we use ChatOpenAI and just
 # point it at z.ai's base URL. The API key is read from the environment
 # (export ZAI_API_KEY="..." in your shell) -- never hard-code secrets.
 llm = ChatOpenAI(
     model="glm-5.1",
-    api_key=os.environ["ZAI_API_KEY"],
+    api_key=require_env("ZAI_API_KEY"),
     base_url="https://api.z.ai/api/coding/paas/v4",  # coding-plan endpoint (vs pay-as-you-go: .../api/paas/v4)
     temperature=0.7,
 )
@@ -330,26 +342,29 @@ def ask_human(payload: dict) -> str:
 # 9. Run it -- SQLite memory + streaming + human-in-the-loop + diagram
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
-    # Print the graph as a Mermaid diagram (paste into https://mermaid.live or a
-    # Markdown file). To render a PNG instead: app.get_graph().draw_mermaid_png().
-    # (Compiling once without a checkpointer just to draw avoids needing config.)
-    print("=== Graph (Mermaid) ===")
-    print(graph.compile().get_graph().draw_mermaid())
+    # Topic comes from the command line, with a default for a quick demo:
+    #   python3 main.py "How do vaccines work?"
+    topic = " ".join(sys.argv[1:]) or "Why bees are important for the planet"
 
-    # check_same_thread=False because LangGraph runs parallel nodes on threads.
+    # Compile once, WITH a durable checkpointer. check_same_thread=False because
+    # LangGraph runs the parallel research nodes on background threads.
     conn = sqlite3.connect(CHECKPOINT_DB, check_same_thread=False)
     checkpointer = SqliteSaver(conn)
     app = graph.compile(checkpointer=checkpointer)
 
+    # Print the graph as a Mermaid diagram (paste into https://mermaid.live or a
+    # Markdown file). For an image instead: app.get_graph().draw_mermaid_png().
+    print("=== Graph (Mermaid) ===")
+    print(app.get_graph().draw_mermaid())
+
     # A fresh thread per run so reruns start clean. Hard-code a fixed id instead
     # to resume an earlier run from the SQLite file across restarts.
-    thread_id = f"bees-{uuid.uuid4().hex[:8]}"
+    thread_id = f"run-{uuid.uuid4().hex[:8]}"
     config = {"configurable": {"thread_id": thread_id}}
-    print(f"\n=== Streaming run (thread: {thread_id}) ===\n")
+    print(f"\n=== Streaming run (thread: {thread_id}) ===")
+    print(f"Topic: {topic}\n")
 
-    pause = stream_until_pause(
-        app, {"topic": "Why bees are important for the planet"}, config
-    )
+    pause = stream_until_pause(app, {"topic": topic}, config)
     # Resume loop: keep going while the graph pauses at the human gate.
     while pause is not None:
         human_decision = ask_human(pause)

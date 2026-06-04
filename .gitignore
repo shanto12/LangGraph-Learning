@@ -6,6 +6,11 @@ __pycache__/
 venv/
 env/
 
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
 # IDE
 .idea/
 .vscode/

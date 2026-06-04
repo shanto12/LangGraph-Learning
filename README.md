@@ -1,5 +1,7 @@
 # LangGraph Learning
 
+[![CI](https://github.com/shanto12/LangGraph-Learning/actions/workflows/ci.yml/badge.svg)](https://github.com/shanto12/LangGraph-Learning/actions/workflows/ci.yml)
+
 A single-file, heavily-commented tour of core [LangGraph](https://langchain-ai.github.io/langgraph/)
 concepts, built around a small team of agents that collaborate to write a short
 article. Powered by [z.ai](https://z.ai) GLM models through the OpenAI-compatible API.
@@ -53,7 +55,8 @@ export ZAI_API_KEY="your-key-here"
 ## Run
 
 ```bash
-python3 main.py
+python3 main.py                      # uses the default topic (bees)
+python3 main.py "How do vaccines work?"   # or pass your own topic
 ```
 
 The script prints the graph as Mermaid, streams each node's progress, and pauses
